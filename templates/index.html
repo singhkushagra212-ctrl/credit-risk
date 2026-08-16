@@ -1,0 +1,45 @@
+<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Credit Risk & Payability Management Portal</title>
+<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>
+<style>.hero { background: #0f172a; color: white; padding: 25px; } .res-card { display: none; } .plan-box { background: #fffbeb; border-left: 5px solid #d97706; padding: 15px; border-radius: 4px; margin-top: 15px; }</style></head>
+<body class='bg-light'><div class='hero text-center'><h3>Credit Risk & Payability Management Portal</h3></div>
+<div class='container mt-4'><div class='row'>
+<div class='col-md-12'><div id='resCard' class='card shadow-sm res-card'><div id='resHead' class='card-header text-white'>Assessment Summary</div><div class='card-body'>
+<div class='text-center'><h1 id='statusTxt' class='display-4'></h1><h2 class='mb-3'><span class='badge bg-warning text-dark' id='riskTxt'></span></h2></div>
+<div class='plan-box'><strong>Improvement Plan:</strong><br><small id='planTxt'></small></div>
+<div class='mt-3 small'><strong>Available Bank Offers:</strong><div id='bankBox'></div></div>
+<div class='d-grid gap-2 mt-4'><button onclick='downloadFile("txt")' class='btn btn-outline-dark btn-sm'>Download TXT</button><button onclick='downloadFile("pdf")' class='btn btn-danger btn-sm'>Download Official PDF</button></div>
+</div></div></div>
+<div class='col-md-12 mt-4'><div class='card shadow-sm'><div class='card-header bg-dark text-white'>Comprehensive Risk Assessment</div><div class='card-body'>
+<form id='riskForm'><div class='row'><div class='col-6 mb-2'><label>Monthly Income (₹)</label><input type='number' name='monthly_income' class='form-control' value='50000'></div><div class='col-6 mb-2'><label>Loan Amount (₹)</label><input type='number' name='loan_amnt' class='form-control' value='200000'></div></div>
+<div class='row'><div class='col-6 mb-2'><label>Monthly Expenses (₹)</label><input type='number' name='monthly_expenses' class='form-control' value='15000'></div><div class='col-6 mb-2'><label>Existing EMI (₹)</label><input type='number' name='existing_emi' class='form-control' value='2000'></div></div>
+<div class='row'><div class='col-4 mb-2'><label>Age</label><input type='number' name='person_age' class='form-control' value='30'></div><div class='col-4 mb-2'><label>Emp Length (Yrs)</label><input type='number' name='person_emp_length' class='form-control' value='5'></div><div class='col-4 mb-2'><label>Hist Length (Yrs)</label><input type='number' name='cb_person_cred_hist_length' class='form-control' value='5'></div></div>
+<div class='row'><div class='col-6 mb-2'><label>Income Source</label><select name='income_source' class='form-select'><option value='Salaried'>Salaried</option><option value='Freelancer'>Freelancer</option><option value='Small Business'>Small Business</option><option value='Student'>Student</option><option value='Pensioner'>Pensioner</option><option value='Others'>Others</option></select></div><div class='col-6 mb-2'><label>Home Ownership</label><select name='person_home_ownership' class='form-select'><option value='RENT'>Rent</option><option value='OWN'>Own</option><option value='MORTGAGE'>Mortgage</option></select></div></div>
+<div class='row'><div class='col-6 mb-2'><label>Loan Intent</label><select name='loan_intent' class='form-select'><option value='PERSONAL'>Personal</option><option value='EDUCATION'>Education</option><option value='MEDICAL'>Medical</option><option value='VENTURE'>Venture</option></select></div><div class='col-6 mb-2'><label>Loan Grade</label><select name='loan_grade' class='form-select'><option value='A'>A</option><option value='B'>B</option><option value='C'>C</option></select></div></div>
+<div class='row'><div class='col-4 mb-2'><label>Default History</label><select name='cb_person_default_on_file' class='form-select'><option value='N'>No</option><option value='Y'>Yes</option></select></div><div class='col-4 mb-2'><label>Tenure (Mo)</label><input type='number' name='months_to_pay' class='form-control' value='24'></div><div class='col-4 mb-2'><label>Interest Rate (%)</label><input type='number' name='loan_int_rate' class='form-control' value='10.5'></div></div>
+<button type='button' onclick='analyze()' class='btn btn-primary w-100 mt-3'>RUN COMPREHENSIVE ANALYSIS</button></form></div></div></div>
+</div></div>
+<script>
+let currentResult = null;
+async function analyze() {
+    const data = Object.fromEntries(new FormData(document.getElementById('riskForm')));
+    const response = await fetch('/predict', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
+    currentResult = await response.json();
+    document.getElementById('resCard').style.display = 'block';
+    document.getElementById('resHead').className = 'card-header ' + (currentResult.status === 'Approved' ? 'bg-success' : 'bg-danger');
+    document.getElementById('statusTxt').innerText = currentResult.status;
+    document.getElementById('riskTxt').innerText = currentResult.risk;
+    document.getElementById('planTxt').innerText = currentResult.plan;
+    const bBox = document.getElementById('bankBox'); bBox.innerHTML = '';
+    currentResult.bank_suggestions.forEach(b => { bBox.innerHTML += `<div class='border-bottom py-1'>${b.bank} (${b.rate})</div>`; });
+}
+function downloadFile(type) {
+    if(!currentResult) return;
+    if(type === 'txt') {
+        const blob = new Blob([`REPORT: ${currentResult.status}\nRISK: ${currentResult.risk}\nPLAN: ${currentResult.plan}`], {type: 'text/plain'});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'Risk_Report.txt'; a.click();
+    } else {
+        fetch('/download_pdf', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(currentResult) })
+        .then(res => res.blob()).then(blob => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'Official_Report.pdf'; a.click(); });
+    }
+}
+</script></body></html>

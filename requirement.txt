@@ -1,0 +1,7 @@
+Flask
+flask_cors
+joblib
+pandas
+fpdf
+scikit-learn==1.6.1
+numpy
